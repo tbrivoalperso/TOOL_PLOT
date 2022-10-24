@@ -1,0 +1,39 @@
+#!/bin/sh
+#SBATCH -J noobsp
+#SBATCH -N 1
+#SBATCH --exclusive
+#SBATCH --no-requeue
+#SBATCH --time=00:05:00
+#SBATCH --account=cmems
+
+
+#PARAMETERS
+FLDR=$1
+CFG_NM=$2
+DEND=$3
+HARM_PROG_DIR=/home/ext/mr/smer/brivoalt/HANA
+NAMELIST_HANA=/home/ext/mr/smer/brivoalt/HANA/namelist
+INP_DATA_DIR=${FLDR}/NOOBS_DATA
+OUT_HARM_DIR=${FLDR}/HARM
+INP_GRID_NAME="grid2D" # Name of the grid
+INP_DATE_EXAMPLE=$DEND # A random date within the date the simulation range (used to get all procs numbers)
+mkdir $OUT_HARM_DIR
+EXE=RUN_HARM_AND_NOOBS.sub.model
+
+pwd
+nPCs="000 001 002 003 004 005 006 007 008 009"
+for nPC in $nPCs
+do
+    echo $EXE ${EXE%.model}.${nPC}
+    sed -e "s%HARM_PROG_DIR_in%`echo $HARM_PROG_DIR`%" \
+        -e "s%NAMELIST_HANA_in%`echo $NAMELIST_HANA`%" \
+        -e "s%INP_DATA_DIR_in%`echo $INP_DATA_DIR`%" \
+        -e "s%OUT_HARM_DIR_in%`echo $OUT_HARM_DIR`%" \
+        -e "s%INP_GRID_NAME%`echo $INP_GRID_NAME`%" \
+        -e "s%INP_DATE_EXAMPLE%`echo $INP_DATE_EXAMPLE`%" \
+        -e "s%CFG_NM%`echo $CFG_NM`%" \
+        -e "s%DEND%`echo $DEND`%" \
+        -e "s%nPC%`echo $nPC`%" ${SCRIPT_DIR}/${EXE} >  ${OUT_HARM_DIR}/${EXE%.model}.${nPC}
+     sbatch ${OUT_HARM_DIR}/${EXE%.model}.${nPC}
+done
+

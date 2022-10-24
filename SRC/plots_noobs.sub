@@ -1,0 +1,116 @@
+#!/bin/sh
+#SBATCH -J NOOBS
+#SBATCH -N 1
+#SBATCH -p normal256
+#SBATCH --exclusive
+#SBATCH --no-requeue
+#SBATCH --time=06:00:00
+#SBATCH --account=cmems
+
+module load cdo/1.9.3
+. "/home/ext/mr/smer/brivoalt/anaconda3/etc/profile.d/conda.sh"
+#conda activate /home/ext/mr/smer/hamonm/miniconda3/envs/env_noobsV140
+
+CYCLE_NOOBS=$1
+FLDR_1=$2
+FLDR_2=$3
+NAM_REF_PLTNOOBS=namelist_plotola.nml.eNEATL36
+WORKDIR=$( pwd )
+DCYCST=${CYCLE_NOOBS%-*}
+DCYCEN=${CYCLE_NOOBS#*-}
+DCYCST_yy=${DCYCST%????}
+DCYCST_mmdd=${DCYCST#????}
+DCYCST_mm=${DCYCST_mmdd%??}
+DCYCST_dd=${DCYCST_mmdd#??}
+
+DCYCEN_yy=${DCYCEN%????}
+DCYCEN_mmdd=${DCYCEN#????}
+DCYCEN_mm=${DCYCEN_mmdd%??}
+DCYCEN_dd=${DCYCEN_mmdd#??}
+
+DCYCEN_mm=$(expr $DCYCEN_mm + 0)
+DCYCST_mm=$(expr $DCYCST_mm + 0)
+DCYCEN_dd=$(expr $DCYCEN_dd + 0)
+DCYCST_dd=$(expr $DCYCST_dd + 0)
+
+
+echo $OLATYP
+cd ${FLDR_1}/${OLATYP}/
+liste=${CFG_NAME}*OLA*nc
+for file in $liste
+do
+
+   echo "current directory :"
+   pwd
+   echo "linking files : "
+
+   echo ln -fs $file ${file#${CFG_NAME}_}
+   ln -fs $file ${file#${CFG_NAME}_}
+
+done
+
+cd ${FLDR_2}/${OLATYP}/
+liste=${CFG_NAME}*OLA*nc
+for file in $liste
+do
+
+   echo "current directory :"
+   pwd
+   echo "linking files : "
+
+   echo ln -fs $file ${file#${CFG_NAME}_}
+   ln -fs $file ${file#${CFG_NAME}_}
+
+done
+
+
+cd $WORKDIR
+echo "current directory :"
+pwd
+#conda activate /home/ext/mr/smer/hamonm/miniconda3/envs/env_noobs
+
+if [ -z "$FLDR_2" ];
+then
+
+
+sed -e "s%FLDROLA_1%`echo ${FLDR_1}/${OLATYP}/`%g" \
+    -e "s%FLDROLA_2%`echo `%g" \
+    -e "s%VER1%`echo $VER1`%g" \
+    -e "s%VER2%`echo `%g" \
+    -e "s%PLTDIR%`echo ${WORKDIR}/NOOBS_${VER1}_${OLATYP}_`%g" \
+    -e "s%DCYCST%`echo $DCYCST`%g" \
+    -e "s%DCYCEN%`echo $DCYCEN`%g" ${PLOTS_DIR}/${NAM_REF_PLTNOOBS} > namelist_plotola.nml
+
+
+cp ${PLOTS_DIR}/plot_noobs_OLA.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_T.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_S.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_T_area.py .
+python plot_noobs_OLA_RMS_per_depth_T.py
+python plot_noobs_OLA_RMS_per_depth_S.py
+python plot_noobs_OLA_RMS_per_depth_T_area.py
+python plot_noobs_OLA.py
+
+else
+
+sed -e "s%FLDROLA_1%`echo ${FLDR_1}/${OLATYP}/`%g" \
+    -e "s%FLDROLA_2%`echo ${FLDR_2}/${OLATYP}/`%g" \
+    -e "s%VER1%`echo $VER1`%g" \
+    -e "s%VER2%`echo $VER2`%g" \
+    -e "s%PLTDIR%`echo ${WORKDIR}/NOOBS_COMP_${VER1}_${VER2}_${OLATYP}_`%g" \
+    -e "s%DCYCST%`echo $DCYCST`%g" \
+    -e "s%DCYCEN%`echo $DCYCEN`%g" ${PLOTS_DIR}/${NAM_REF_PLTNOOBS} > namelist_plotola.nml
+
+
+cp ${PLOTS_DIR}/plot_noobs_OLA.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_T.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_S.py .
+cp ${PLOTS_DIR}/plot_noobs_OLA_RMS_per_depth_T_area.py .
+python plot_noobs_OLA_RMS_per_depth_T.py
+python plot_noobs_OLA_RMS_per_depth_S.py
+python plot_noobs_OLA_RMS_per_depth_T_area.py
+python plot_noobs_OLA.py
+
+fi
+
+

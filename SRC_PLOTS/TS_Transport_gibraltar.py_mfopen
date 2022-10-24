@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jan  7 13:04:08 2019
+
+@author: tbrivoal
+"""
+import cartopy.crs as ccrs
+import xarray as xr
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import cmocean
+import matplotlib.pyplot as plt
+import netCDF4 as nc
+from matplotlib import pyplot
+from matplotlib import colors as mcolors
+import matplotlib.gridspec as gridspec
+from scipy.stats import norm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkblue","blue","white","red","firebrick"])
+darkred = plt.cm.Reds(np.linspace(0.99, 1, 2))
+darkblue = plt.cm.YlGnBu(np.linspace(0.99, 1, 2))
+bwr_cmap1 = cmap(np.linspace(0, 0.5, 252))
+bwr_cmap2 = cmap(np.linspace(0.5, 1, 252))
+w_cmap = cmap(np.linspace(0.5, 0.5, 78))
+# bwr_cmap2 = plt.cm.(np.linspace(0.5, 1, 126))
+# combine them and build a new colormap
+colors = np.vstack((darkblue,bwr_cmap1,w_cmap,bwr_cmap2,darkred))
+mymap =mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+
+def preprocess(ds):
+    y_min=380
+    y_max=445
+    x_min=516
+    
+    return ds.isel(y=np.arange(y_min,y_max)).isel(x=x_min)
+
+def preprocess_agrif(ds):
+    y_min=380
+    y_max=445
+    x_min=516
+    imin_IBI_AGRIF=IMIN
+    imax_IBI_AGRIF=IMAX
+    jmin_IBI_AGRIF=JMIN
+    jmax_IBI_AGRIF=JMAX
+
+    y_min_agrif=(y_min - jmin_IBI_AGRIF)*3 + 4 
+    y_max_agrif=(y_max - jmin_IBI_AGRIF)*3 + 4
+    x_min_agrif=(x_min - imin_IBI_AGRIF)*3 + 4
+
+    return ds.isel(y=np.arange(y_min_agrif,y_max_agrif)).isel(x=x_min_agrif)
+
+y_min=380
+y_max=445
+x_min=516
+imin_IBI_AGRIF=IMIN
+imax_IBI_AGRIF=IMAX
+jmin_IBI_AGRIF=JMIN
+jmax_IBI_AGRIF=JMAX
+
+y_min_agrif=(y_min - jmin_IBI_AGRIF)*3 + 4
+y_max_agrif=(y_max - jmin_IBI_AGRIF)*3 + 4
+x_min_agrif=(x_min - imin_IBI_AGRIF)*3 + 4
+
+Tfile_VER1 = xr.open_mfdataset('FLDR_VERSION1/CFG_NAME_1d_gridU25h_????????-2017????.nc',parallel=True).sel(time_counter=slice('DSTART', 'DEND'))
+Tfile_AGRIF_VER1=xr.open_mfdataset('FLDR_VERSION1/AGRIF_CFG_NAME_1d_gridU25h_????????-2017????.nc',parallel=True).sel(time_counter=slice('DSTART', 'DEND'))
+Tfile_VER2=xr.open_mfdataset('FLDR_VERSION2/CFG_NAME_1d_gridU25h_????????-2017????.nc',parallel=True).sel(time_counter=slice('DSTART', 'DEND'))
+print('dataset loaded')
+Coordfile_VER1 = xr.open_mfdataset('FLDR_VERSION1/domain_cfg.nc', drop_variables={"x", "y",}).squeeze()
+Coordfile_AGRIF_VER1 = xr.open_mfdataset('FLDR_VERSION1/1_domain_cfg.nc', drop_variables={"x", "y",}).squeeze()
+Coordfile_VER2 = xr.open_mfdataset('FLDR_VERSION2/domain_cfg.nc', drop_variables={"x", "y",}).squeeze()
+
+print('dataset loaded')
+
+#area_sec_VER1=Coordfile_VER1.e2t.values * Coordfile_VER1.e3t_0.values
+#area_sec_AGRIF_VER1=Coordfile_AGRIF_VER1.e2t.values * Coordfile_AGRIF_VER1.e3t_0.values
+#area_sec_VER2=Coordfile_VER2.e2t.values * Coordfile_VER2.e3t_0.values
+print(Tfile_VER1.vozocrtx)
+U_tot_VER1 = Tfile_VER1.vozocrtx.isel(y=np.arange(y_min,y_max)).isel(x=x_min) 
+print(U_tot_VER1.shape)
+U_tot_AGRIF_VER1 = Tfile_AGRIF_VER1.isel(y=np.arange(y_min_agrif,y_max_agrif)).isel(x=x_min_agrif).vozocrtx 
+U_tot_VER2 = Tfile_VER2.isel(y=np.arange(y_min,y_max)).isel(x=x_min).vozocrtx 
+
+print('ok')
+U_tot_VER1 = U_tot_VER1.values
+U_tot_AGRIF_VER1 = U_tot_AGRIF_VER1.values
+U_tot_VER2 = U_tot_VER2.values
+print('outflow')
+print('mask_data')
+#U_tot_VER1_out=U_tot_VER1.where(U_tot_VER1 < 0, np.nan).values 
+#U_tot_AGRIF_VER1_out=U_tot_AGRIF_VER1.where(U_tot_AGRIF_VER1 < 0, np.nan).values
+#U_tot_VER2_out=U_tot_VER2.where(U_tot_VER2 < 0, np.nan).values
+U_tot_VER1_out=np.where(U_tot_VER1 < 0,U_tot_VER1,np.nan)
+U_tot_AGRIF_VER1_out=np.where(U_tot_AGRIF_VER1 < 0,U_tot_AGRIF_VER1,np.nan)
+U_tot_VER2_out=np.where(U_tot_VER2 < 0,U_tot_VER2,np.nan)
+
+print('sum')
+U_tot_VER1_out = np.nansum(U_tot_VER1_out * area_sec_VER1)
+U_tot_AGRIF_VER1_out = np.nansum(U_tot_AGRIF_VER1_out * area_sec_AGRIF_VER1)
+U_tot_VER2_out = np.nansum(U_tot_VER2_out * area_sec_VER2)
+
+print('inflow')
+print('mask_data')
+
+U_tot_VER1_in=U_tot_VER1.where(U_tot_VER1 > 0, np.nan).values
+U_tot_AGRIF_VER1_in=U_tot_AGRIF_VER1.where(U_tot_AGRIF_VER1 > 0, np.nan).values
+U_tot_VER2_in=U_tot_VER2.where(U_tot_VER2 > 0, np.nan).values
+
+print('sum')
+U_tot_VER1_in = np.nansum(U_tot_VER1_in * area_sec_VER1)
+U_tot_AGRIF_VER1_in = np.nansum(U_tot_AGRIF_VER1_in * area_sec_AGRIF_VER1)
+U_tot_VER2_in = np.nansum(U_tot_VER2_in * area_sec_VER2)
+
+print('plotting ...')
+plt.figure(figsize=(10,8))
+ax = plt.subplot(121)
+ax.plot(Tfile_VER1.time_counter, U_tot_VER1_out, color='b',label='VER1')
+ax.plot(Tfile_AGRIF_VER1.time_counter, U_tot_AGRIF_VER1_out, color='b',ls='dotted', label='VER1 (zoom)')
+ax.plot(Tfile_VER2.time_counter, U_tot_VER2_out, color='r',label='VER2')
+ax.set_xlabel('date')
+ax.set_ylabel('Flow (Sv)')
+ax.set_title('outflow (Sw)')
+
+ax = plt.subplot(122)
+ax.plot(Tfile_VER1.time_counter, U_tot_VER1_in, color='b',label='VER1')
+ax.plot(Tfile_AGRIF_VER1.time_counter, U_tot_AGRIF_VER1_in, color='b',ls='dotted', label='VER1 (zoom)')
+ax.plot(Tfile_VER2.time_counter, U_tot_VER2_in, color='r',label='VER2')
+ax.set_xlabel('date')
+ax.set_ylabel('Flow (Sv)')
+ax.set_title('inflow (Sw)')
+
+plt.savefig('TS_Transports_gibraltar_VER2_m_VER1_DSTART_DEND.png',dpi=400)
+
+

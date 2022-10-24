@@ -1,0 +1,134 @@
+#!/bin/sh
+#SBATCH -J NOOBS
+#SBATCH -N 1
+#SBATCH -p normal256
+#SBATCH --exclusive
+#SBATCH --no-requeue
+#SBATCH --time=06:00:00
+#SBATCH --account=cmems
+
+module load cdo/1.9.3
+. "/scratch/work/brivoalt/anaconda3/etc/profile.d/conda.sh"
+
+#conda activate /home/ext/mr/smer/hamonm/miniconda3/envs/env_noobsV140
+
+CYCLE_NOOBS=$1
+FLDR_1=$2
+FLDR_2=$3
+NAM_REF_PLTNOOBS=namelist_plotola.nml.AGRIF108
+WORKDIR=$( pwd )
+echo $OLATYP
+cd ${FLDR_1}/${OLATYP}_zoom/
+liste=${AGRIF_CFG_NAME}*OLA*nc
+for file in $liste
+do
+
+   echo "current directory :"
+   pwd
+   echo "linking files : "
+
+   echo ln -fs $file ${file#${AGRIF_CFG_NAME}_}
+   ln -fs $file ${file#${AGRIF_CFG_NAME}_}
+
+done
+
+cd ${FLDR_2}/${OLATYP}/
+liste=${CFG_NAME}*OLA*nc
+for file in $liste
+do
+
+   echo "current directory :"
+   pwd
+   echo "linking files : "
+
+   echo ln -fs $file ${file#${CFG_NAME}_}
+   ln -fs $file ${file#${CFG_NAME}_}
+
+done
+
+
+
+cd $WORKDIR
+echo "current directory :"
+pwd
+DCYCST=${CYCLE_NOOBS%-*}
+DCYCEN=${CYCLE_NOOBS#*-}
+DCYCST_yy=${DCYCST%????}
+DCYCST_mmdd=${DCYCST#????}
+DCYCST_mm=${DCYCST_mmdd%??}
+DCYCST_dd=${DCYCST_mmdd#??}
+
+DCYCEN_yy=${DCYCEN%????}
+DCYCEN_mmdd=${DCYCEN#????}
+DCYCEN_mm=${DCYCEN_mmdd%??}
+DCYCEN_dd=${DCYCEN_mmdd#??}
+
+DCYCEN_mm=$(expr $DCYCEN_mm + 0)
+DCYCST_mm=$(expr $DCYCST_mm + 0)
+DCYCEN_dd=$(expr $DCYCEN_dd + 0)
+DCYCST_dd=$(expr $DCYCST_dd + 0)
+
+echo "START YEAR = " $DCYCST_yy
+echo "START MONTH = " $(expr $DCYCST_mm + 0)
+echo "START DAY = " ${DCYCST_dd##+(0)} 
+
+echo "START YEAR = " $DCYCEN_yy
+echo "START MONTH = " $(expr $DCYCEN_mm + 0)
+echo "START DAY = " ${DCYCEN_dd##+(0)} 
+cp ${PLOTS_DIR}/reverse_clm.py .
+cp ${PLOTS_DIR}/READ_NML.py .
+conda activate /home/ext/mr/smer/hamonm/miniconda3/envs/env_noobs
+
+######COMBINE OLAs ###############
+if [ ! -z "$FLDR_2" ];
+then
+
+cd ${FLDR_1}/${OLATYP}_zoom/
+liste=$(ls OLA_?S_**.nc)
+for file in $liste
+do 
+   if [ -f ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc ] && [ -f ${FLDR_2}/${OLATYP}_combined_${VER1}_${VER2}/${CFG_NAME}_${file%.nc}_combined.nc ]
+   then
+       echo "${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc exits, next"
+   else
+       echo "${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc not here"
+       echo $file
+       echo ${SCRIPT_DIR}/combine_ola.py -ola1 ${FLDR_1}/${OLATYP}_zoom/${AGRIF_CFG_NAME}_${file} -ola2 ${FLDR_2}/${OLATYP}/${CFG_NAME}_${file} -suffix_out combined 
+       python ${SCRIPT_DIR}/combine_ola.py -ola1 ${FLDR_1}/${OLATYP}_zoom/${AGRIF_CFG_NAME}_${file} -ola2 ${FLDR_2}/${OLATYP}/${CFG_NAME}_${file} -suffix_out combined
+
+       mkdir ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}
+       mkdir ${FLDR_2}/${OLATYP}_zoom_combined_${VER1}_${VER2}
+       
+       mv ${FLDR_1}/${OLATYP}_zoom/*combined* ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/
+       mv ${FLDR_2}/${OLATYP}/*combined* ${FLDR_2}/${OLATYP}_zoom_combined_${VER1}_${VER2}/
+   fi
+done
+
+
+cd ${FLDR_1}/${OLATYP}_zoom/
+liste=$(ls OLA_VP_**.nc)
+for file in $liste
+do 
+   if [ -f ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc ] && [ -f ${FLDR_2}/${OLATYP}_combined_${VER1}_${VER2}/${CFG_NAME}_${file%.nc}_combined.nc ] 
+   then
+       echo "${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc exits, next"
+   else
+       echo "${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/${AGRIF_CFG_NAME}_${file%.nc}_combined.nc not here"
+       echo $file
+       echo ${SCRIPT_DIR}/combine_ola_prof.py -ola1 ${FLDR_1}/${OLATYP}_zoom/${AGRIF_CFG_NAME}_${file} -ola2 ${FLDR_2}/${OLATYP}/${CFG_NAME}_${file} -suffix_out combined 
+       python ${SCRIPT_DIR}/combine_ola_prof.py -ola1 ${FLDR_1}/${OLATYP}_zoom/${AGRIF_CFG_NAME}_${file} -ola2 ${FLDR_2}/${OLATYP}/${CFG_NAME}_${file} -suffix_out combined
+
+       mkdir ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}
+       mkdir ${FLDR_2}/${OLATYP}_zoom_combined_${VER1}_${VER2}
+       
+       mv ${FLDR_1}/${OLATYP}_zoom/*combined* ${FLDR_1}/${OLATYP}_zoom_combined_${VER1}_${VER2}/
+       mv ${FLDR_2}/${OLATYP}/*combined* ${FLDR_2}/${OLATYP}_zoom_combined_${VER1}_${VER2}/
+   fi
+done
+
+
+fi
+
+
+
+

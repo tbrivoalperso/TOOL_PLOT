@@ -1,0 +1,110 @@
+#!/bin/sh
+#SBATCH -J noobsp
+#SBATCH -N 1
+#SBATCH --exclusive
+#SBATCH --no-requeue
+#SBATCH --time=15:00:00
+#SBATCH --account=cmems
+######################################################
+#PARAMETERS
+HARM_PROG_DIR=HARM_PROG_DIR_in
+NAMELIST_HANA=NAMELIST_HANA_in
+INP_DATA_DIR=INP_DATA_DIR_in
+OUT_HARM_DIR=OUT_HARM_DIR_in
+GRID_NAME="grid2D_NOOBS" # Name of the grid
+DATE_EXAMPLE_TMP="DEND" # A random date within the date the simulation range
+DATE_EXAMPLE=$(date -d $DATE_EXAMPLE_TMP +%Y%m%d)
+######################################################
+# LOAD MODULES #######################################
+
+module load intel/2018.5.274
+module load intelmpi/2018.5.274
+
+module load phdf5/1.8.18
+module load netcdf_par/4.7.1_V2
+module load netcdf-fortran/4.5.2_V2
+######################################################
+cd $INP_DATA_DIR
+# Select a random date to get proc number
+TAIL="CFG_NM_1h_${GRID_NAME}_${DATE_EXAMPLE}-${DATE_EXAMPLE}"
+# Harmonic analysis (per procs) ----------------------
+list=$(ls ${TAIL}_nPC?.nc) # List of files to get procs number
+if [ -z "$list" ];
+then
+echo "ERROR : ENDDATE DOES NOT EXISTS - ABORT"
+exit
+fi
+			  
+mkdir ${INP_DATA_DIR}/TMP_nPC
+cd ${INP_DATA_DIR}/TMP_nPC
+cp ${HARM_PROG_DIR}/tide_ana .
+cp ${HARM_PROG_DIR}/tide_predict .
+pwd
+for file00 in $list
+do
+    PROC_NUM=${file00#${TAIL}}
+    if [ -f ${INP_DATA_DIR}/res_harm_ssh${PROC_NUM} ]; then
+        echo "file res_harm_ssh${PROC_NUM} exists, next"
+        ln -fs ${INP_DATA_DIR}/res_harm_ssh${PROC_NUM} .
+        else
+          sed -e "s/res_harm_ssh.nc/`echo res_harm_ssh${PROC_NUM}`/" ${NAMELIST_HANA} >  namelist
+          ./tide_ana ${INP_DATA_DIR}/CFG_NM_1h_${GRID_NAME}*${PROC_NUM}
+          wait -n
+          mv res_harm_ssh${PROC_NUM} ${INP_DATA_DIR}/
+          ln -fs ${INP_DATA_DIR}/res_harm_ssh${PROC_NUM} .
+
+    fi
+    cd ${INP_DATA_DIR}/
+    FILE_LIST=$(ls CFG_NM_1h_${GRID_NAME}*${PROC_NUM})
+    cd ${INP_DATA_DIR}/TMP_nPC
+    for FILE_DAILY in $FILE_LIST
+    do
+       # Check if tide variable is present (if so, ssh_tide has already been calculated) 
+       ncdump -h ${INP_DATA_DIR}/$FILE_DAILY > file_nPC.txt
+       isInFile=$(cat file_nPC.txt | grep -c "tide(time_counter")
+       ##########################################################################
+       if [ $isInFile -eq 0 ];
+       then
+            echo "$FILE_DAILY has no tide variable, processing"
+           #string not contained in file
+ 
+            echo "Creating file " ${FILE_DAILY%_${GRID_NAME}_*}_ssh_tide_${FILE_DAILY#*_${GRID_NAME}_}
+            sed -e "s/res_harm_ssh.nc/`echo res_harm_ssh${PROC_NUM}`/"\
+                -e "s/predicted_ssh.nc/`echo ${FILE_DAILY%_${GRID_NAME}_*}_ssh_tide_${FILE_DAILY#*_${GRID_NAME}_}`/" ${NAMELIST_HANA} >  namelist
+            echo $FILE_DAILY 
+            ./tide_predict ${INP_DATA_DIR}/$FILE_DAILY   
+            wait -n
+            ncrename -v sossheig,tide ${FILE_DAILY%_${GRID_NAME}_*}_ssh_tide_${FILE_DAILY#*_${GRID_NAME}_}
+            ncks -A ${FILE_DAILY%_${GRID_NAME}_*}_ssh_tide_${FILE_DAILY#*_${GRID_NAME}_} ${INP_DATA_DIR}/$FILE_DAILY
+
+            rm -f ${FILE_DAILY%_${GRID_NAME}_*}_ssh_tide_${FILE_DAILY#*_${GRID_NAME}_}
+           fi
+    done
+done
+cd ${INP_DATA_DIR}/
+
+list=$(ls CFG_NM_1h_${GRID_NAME}*_0000.nc)
+for file02 in $list
+do 
+   list2=$(ls ${file02%_0000.nc}_nPC?.nc)
+   for file03 in $list2
+   do
+       rm -f time_counter_nPC
+       ncks -v time_counter ${file03%_${GRID_NAME}_*}_gridT_NOOBS_${file03#*_${GRID_NAME}_} time_counter_nPC 
+       ncks -A time_counter_nPC $file03
+       rm -f time_counter_nPC
+       ncatted -O -a coordinates,tide,o,c,"time_centered nav_lat nav_lon" $file03
+       cdo shifttime,-30minutes $file03 ${file03}_tmp
+       mv ${file03}_tmp $file03 
+   done
+done
+
+
+
+
+
+
+
+
+
+

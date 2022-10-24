@@ -1,0 +1,40 @@
+#!/bin/sh
+#SBATCH -J NOOBS
+#SBATCH -N 1
+#SBATCH --no-requeue
+#SBATCH --time=00:05:00
+#SBATCH --account=cmems
+
+module load cdo/1.9.3
+. "/scratch/work/brivoalt/anaconda3/etc/profile.d/conda.sh"
+
+conda activate /home/ext/mr/smer/hamonm/miniconda3/envs/env_noobsV140
+FLDR=$1  # SCRIPT FILE
+CYCLE_NOOBS=$2
+RUNID=$3
+
+NAM_REF_NOOBS=/scratch/work/brivoalt/PLOTS/TOOL_PLOT/SRC/NOOBS/namelists/NOOBS_eNEATL36_type.nml.${OLATYP}
+NAM_REF_NOOBS_zoom=/scratch/work/brivoalt/PLOTS/TOOL_PLOT/SRC/NOOBS/namelists/NOOBS_eNEATL36_type.nml.${OLATYP}.zoom
+
+echo "reading namelist :"
+echo $NAM_REF_NOOBS
+WORKDIR=$( pwd )
+sed -e "s%FLDR%`echo $FLDR`%g" ${NAM_REF_NOOBS} > ${WORKDIR}/NOOBS_eNEATL36_type.nml.${RUNID}
+sed -e "s%FLDR%`echo $FLDR`%g" ${NAM_REF_NOOBS_zoom} > ${WORKDIR}/NOOBS_eNEATL36_type.nml.${RUNID}.zoom
+
+mkdir ${FLDR}/${OLATYP}
+mkdir ${FLDR}/${OLATYP}_zoom
+
+mkdir ${FLDR}/INFO
+mkdir ${FLDR}/HBAR
+mkdir ${FLDR}/HBAR_zoom
+
+mkdir ${FLDR}/COM
+mkdir ${FLDR}/LOG
+mkdir ${FLDR}/LOG_zoom
+
+noobs_subgen -f ${WORKDIR}/NOOBS_eNEATL36_type.nml.${RUNID}.zoom -CYCLE ${CYCLE_NOOBS} -L 7 -OO True --typ SLA,SST,SSS,VPT,VPS -nxios 100 -dirrun ${FLDR}/LOG_zoom -account cmems
+
+noobs_subgen -f ${WORKDIR}/NOOBS_eNEATL36_type.nml.${RUNID} -CYCLE ${CYCLE_NOOBS} -L 7 -OO True --typ SLA,SST,SSS,VPT,VPS -nxios 100 -dirrun ${FLDR}/LOG -account cmems
+
+

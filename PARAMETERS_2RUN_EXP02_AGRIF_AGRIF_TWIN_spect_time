@@ -1,0 +1,76 @@
+#!/bin/sh
+#SBATCH -J PLOTS
+#SBATCH -N 1
+#SBATCH -p normal256
+#SBATCH --exclusive
+#SBATCH --no-requeue
+#SBATCH --time=06:00:00
+module load cdo/1.9.3
+
+# Folders (plots will make VER2 - VER1)
+export FLDR_VERSION1=/scratch/work/brivoalt/RUNS_NEMO/eNEATL36_AGRIF_vvl/EXP02_AGRIF_finaldomain_bathycorrected_qco_boost2_noslip
+export FLDR_VERSION2=/scratch/work/brivoalt/RUNS_NEMO/eNEATL36/eNEATL36_trunk_r4_2-RC_r15113_IFS_EXP02_2017_2018_AGRIFTWIN_TRUE_new
+export CFG_NAME="eNEATL36"
+export AGRIF_CFG_NAME="1_AGRIF"
+export VER1="DEMONSTRATOR"
+export VER2="TWIN"
+
+export IS_AGRIF_VER1=true #true
+export IS_AGRIF_VER2=false # cannot be true if IS_AGRIF_VER1=false
+export DSTART="2017-06-01" # Start date for maps
+#export DSTART_TS="2017-01-04" # Start date for time series and gifs (usually the beginning of the run
+#export DEND="2018-07-02"
+export DEND="2017-06-30"
+
+#export DEND="2018-07-01"
+#export DEND="2017-09-30"
+export MONTH_ana="201709"
+#export CYCLE_NOOBS="20170111-20180103"
+#export CYCLE_NOOBS="20170111-20180509"
+export CYCLE_NOOBS="20170111-20180627"
+export OLATYP="OLA_unfiltered" # OLA_filtered or OLA_unfiltered
+
+export #ZOOM DEFINITION
+export IMIN=220
+export IMAX=1073
+export JMIN=350
+export JMAX=1245
+
+# SCRIPTS DIRECTORIES
+export OUT_DIR=/scratch/work/brivoalt/PLOTS/PLOTS_AGRIF/SPECTRUMS # Where to plot
+export PLOTS_DIR=/scratch/work/brivoalt/PLOTS/TOOL_PLOT/SRC_PLOTS # SRC PLOT FILES
+export SCRIPT_DIR=/scratch/work/brivoalt/PLOTS/TOOL_PLOT/SRC # SRC rebuild & Pre-processing files
+export CDFTOOLS=/home/ext/mr/smer/samsong/CDFTOOLS/bin/
+# LISTS OF PLOTS 
+# On mother domain
+export scripts_motherdomain="" #get_coupe_ifixed.py" #compute_KE_subdaily.py compute_KE_submonthly.py" # compute_KE_overmonth.py" #compute_daily_u.py compute_daily_v.py compute_monthly_u.py compute_monthly_v.py" #MAP_tide_diff_with_FES_M2.py MAP_tide_diff_with_FES_S2.py MAP_tide_diff_with_FES_K1.py MAP_tide_diff_with_FES_O1.py MAP_tide_diff_with_FES_M4.py" # compute_subdaily_uv.py" #get_coupe_ifixed.py" #MAP_SSH.py MAP_MDT_L4.py MAP_tide_FES_M2.py MAP_tide_M2.py MAP_tide_diff_with_FES_M2.py MAP_tide_FES_S2.py MAP_tide_S2.py MAP_tide_diff_with_FES_S2.py MAP_MLD.py " #"Hoevmuller_T_depth_lon.py" #MAP_SST_AVHRR.py MAP_SST.py " #MAP_MDT_L4.py MAP_SSH.py" #MAP_MDT_L4.py MAP_SSH.py" #MAP_KE_gcmfilter.py" #"Hoevmuller_W.py" #"MAP_tide_FES_M2.py MAP_tide_M2.py MAP_tide_diff_with_FES_M2.py MAP_tide_FES_S2.py MAP_tide_S2.py MAP_tide_diff_with_FES_S2.py" #MAP_tide_diff_with_FES.py MAP_tide.py MAP_tide_FES.py" #space_spectrum_SSH.py" #"time_spectrum_SSH.py" #"MAP_SST_parent_and_son.py" #MAP_tide.py MAP_VOR.py MAP_SST.py MAP_KE.py MAP_MLD.py MAP_SSS.py" 
+export scripts_motherdomain_cmp="time_spectrum_KE_box_CMP_hourly.py " #get_coupe_gibraltar.py TS_Transport_gibraltar.py "  #get_coupe_gibraltar.py" #TS_Transport_gibraltar.py" #MAP_SST_OSTIA_CMP.py" #"MAP_MLD_CMP.py" #"MAP_SST_OSTIA_CMP.py" #Hoevmuller_T_depth_lon_CMP.py" #MAP_SST_CMP.py" #MAP_SSH_CMP.py" #time_spectrum_SSH_box_CMP_hourly.py space_spectrum_SSH_box_CMP_hourly.py" #MAP_SST_CMP.py TS_SSS_CMP.py TS_MLD_CMP.py TS_KE_CMP.py" #time_spectrum_SSH_box_CMP.py space_spectrum_SSH_box_CMP.py" # space_spectrum_SSH_box_CMP.py" #"TS_SSS_CMP.py TS_MLD_CMP.py TS_SST_CMP.py TS_KE_CMP.py MAP_SST_CMP.py MAP_KE_CMP.py MAP_MLD_CMP.py MAP_SSS_CMP.py time_spectrum_SSH_CMP.py space_spectrum_SSH_CMP.py"
+
+ #On agrif
+export scripts_zoom="get_coupe_ifixed_zoom.py" #get_coupe_ifixed_zoom.py" #"time_spectrum_SSH.py" #"MAP_tide.py MAP_VOR.py MAP_SST.py MAP_KE.py MAP_MLD.py MAP_SSS.py" 
+export scripts_zoom_cmp="" #"TS_SSS_CMP.py TS_MLD_CMP.py TS_SST_CMP.py TS_KE_CMP.py" #"MAP_SST_CMP.py MAP_KE_CMP.py MAP_MLD_CMP.py MAP_SSS_CMP.py"
+
+# Scripts to make gifs
+export scripts_gifs="" #MAP_SST_GIFS.py MAP_KE_GIFS.py MAP_VOR_GIFS.py" #MAP_VOR_GIFS_manche.py" #"MAP_SST_GIFS_manche.py" #"MAP_SST_GIFS.py MAP_KE_GIFS.py MAP_VOR_GIFS.py" 
+export scripts_gifs_daily="MAP_VOR_GIFS_parent_and_son_daily.py" #MAP_VOR_GIFS_parent_and_son_daily_WBDY.py" #MAP_VOR_GIFS_daily.py"
+
+# Inputs
+export SST_OSTIA=/scratch/work/brivoalt/DATA/SST/OSTIA_SST_ORIGIN_y2017-2018_eNEATL36.nc
+export MESH_MASK_MOTHER=/scratch/work/brivoalt/DATA_eNEATL36/mesh_mask_eNEATL36.nc
+export MESH_MASK_ZOOM=/scratch/work/brivoalt/DATA_eNEATL36/mesh_mask_eNEATL36_zoom.nc
+
+# Grid names
+export gridT_1d_name="gridT25h"
+export gridT_1h_name="gridT"
+export grid2D_1d_name="grid2D"
+export grid2D_ssh_1d_name="grid2D25h"
+
+export grid2D_1h_name="gridT"
+export gridU_1d_name="gridU25h"
+export gridU_1h_name="gridU"
+export gridV_1d_name="gridV25h"
+export gridV_1h_name="gridV"
+export gridS_1d_name="gridS"
+
+
+
